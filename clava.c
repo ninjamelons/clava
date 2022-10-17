@@ -20,7 +20,6 @@ struct metaball {
 struct metaball *new_metaball(int, int, int);
 struct metaball *new_metaball_mv(int, int, int, int, float);
 void free_metaball(struct metaball*);
-float Q_rsqrt(float);
 
 int main() {
 	WINDOW *wnd = initscr();
@@ -31,12 +30,13 @@ int main() {
 	noecho();					/* Don't echo() while we do getch */
 	curs_set(0);
 	srand(time(NULL));
+	use_default_colors();
 
 	int row, col;
 	getmaxyx(wnd, row, col);	/* Get window dimensions */
 
 	short wax_color = 1;
-	init_pair(wax_color, COLOR_RED, COLOR_BLACK);	/* Foreground & background */
+	init_pair(wax_color, COLOR_RED, -1);	/* Foreground & background */
 
 	wattron(wnd, COLOR_PAIR(wax_color));
 	char msg[] = "Totally a lava lamp";
@@ -190,16 +190,4 @@ void free_metaball(struct metaball *ball) {
 	if(ball != NULL) {
 		free(ball);
 	}
-}
-
-// https://en.wikipedia.org/wiki/Fast_inverse_square_root 
-float Q_rsqrt(float number)
-{
-	union {
-		float    f;
-		uint32_t i;
-	} conv = { .f = number };
-	conv.i  = 0x5f3759df - (conv.i >> 1);
-	conv.f *= 1.5F - (number * 0.5F * conv.f * conv.f);
-	return conv.f;
 }
