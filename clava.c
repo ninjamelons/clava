@@ -7,18 +7,20 @@
 
 #define PIXEL "#"
 
+#define MIN(a,b) \
+   ({ __typeof__ (a) _a = (a); \
+       __typeof__ (b) _b = (b); \
+     _a < _b ? _a : _b; })
+
 // Coordinate positions X,Y
 // Radius
 // Velocity VX,VY
 struct metaball {
 	int y, x, radius;
 	float vx, vy;
-	int isMoveable;
-	float moveSpeed;
 };
 
 struct metaball *new_metaball(int, int, int);
-struct metaball *new_metaball_mv(int, int, int, int, float);
 void free_metaball(struct metaball*);
 
 int main() {
@@ -49,22 +51,22 @@ int main() {
 		// Floating blobs
 		new_metaball(15, 15, 10),
 		new_metaball(15, 45, 5),
-		// Immoveable floor
-		new_metaball_mv(row, col / 2, row / 3.0f, 0, 0.0f),
-		new_metaball_mv(row, col / 2 + 10, row / 3.0f, 0, 0.0f),
-		new_metaball_mv(row, col / 2 + 20, row / 3.0f, 0, 0.0f),
-		new_metaball_mv(row + 1, col / 2 - 10, row / 3.0f, 0, 0.0f),
-		new_metaball_mv(row + 1, col / 2 - 20, row / 3.0f, 0, 0.0f),
-		new_metaball_mv(row + 1, col / 2 + 33, row / 3.0f, 0, 0.0f),
-		new_metaball_mv(row + 1, col / 2 - 33, row / 3.0f, 0, 0.0f),
-		// Immoveable Ceiling
-		new_metaball_mv(0 - 1, col / 2, row / 3.5f, 0, 0.0f),
-		new_metaball_mv(0 - 1, col / 2 + 10, row / 3.5f, 0, 0.0f),
-		new_metaball_mv(0 - 1, col / 2 - 10, row / 3.5f, 0, 0.0f),
-		new_metaball_mv(0 - 2, col / 2 + 20, row / 4.0f, 0, 0.0f),
-		new_metaball_mv(0 - 2, col / 2 - 20, row / 4.0f, 0, 0.0f),
-		new_metaball_mv(0 - 2, col / 2 + 25, row / 4.0f, 0, 0.0f),
-		new_metaball_mv(0 - 2, col / 2 - 25, row / 4.0f, 0, 0.0f),
+		// Init Floor
+		new_metaball(row, col / 2, row / 3.0f),
+		new_metaball(row, col / 2 + 10, row / 3.0f),
+		new_metaball(row, col / 2 + 20, row / 3.0f),
+		new_metaball(row + 1, col / 2 - 10, row / 3.0f),
+		new_metaball(row + 1, col / 2 - 20, row / 3.0f),
+		new_metaball(row + 1, col / 2 + 33, row / 3.0f),
+		new_metaball(row + 1, col / 2 - 33, row / 3.0f),
+		// Init Ceiling
+		new_metaball(0 - 1, col / 2, row / 3.5f),
+		new_metaball(0 - 1, col / 2 + 10, row / 3.5f),
+		new_metaball(0 - 1, col / 2 - 10, row / 3.5f),
+		new_metaball(0 - 2, col / 2 + 20, row / 4.0f),
+		new_metaball(0 - 2, col / 2 - 20, row / 4.0f),
+		new_metaball(0 - 2, col / 2 + 25, row / 4.0f),
+		new_metaball(0 - 2, col / 2 - 25, row / 4.0f),
 	};
 
 	int frameCount = 0;
@@ -117,36 +119,45 @@ int main() {
 		// Bouyant from bottom to top, with pauses in between
 		for(int i = 0; i < size; i++) {
 			struct metaball *v = vec[i];
-			if(v->isMoveable) {
 
-				// Normalize X,Y
-				float norm_x = (float)v->x / col;
-				float norm_y = (float)v->y / row;
-				// Between negative and positive value
-				float norm_signed_x = norm_x - 0.5f;
-				float norm_signed_y = norm_y * 3 - 1.5f;
+			// Normalize X,Y
+			float norm_x = (float)v->x / col;
+			float norm_y = (float)v->y / row;
+			// Between negative and positive value
+			float norm_signed_x = norm_x - 0.5f;
+			float norm_signed_y = norm_y * 3 - 1.5f;
 
-				// Seed rand and get random scaling factor for displacement
-				float factor_x = (float)rand() / RAND_MAX * 0.2;
-				float factor_y = (float)rand() / RAND_MAX;
+			// Seed rand and get random scaling factor for displacement
+			float factor_x = (float)rand() / RAND_MAX * 0.2;
+			float factor_y = (float)rand() / RAND_MAX;
 
-				v->vx += -1 * norm_signed_x * factor_x * v->moveSpeed;
-				v->vy += -1 * norm_signed_y * factor_y * v->moveSpeed;
-
-				v->x += v->vx;
-				v->y += v->vy;
-
-				if(v->x > col)
-					v->x = col;
-				else if(v->x < 0)
-					v->x = 0;
-				if(v->y > row)
-					v->y = row;
-				else if(v->y < 0)
-					v->y = 0;
-			}
+			// Horizontal movespeed = Min(inverse radius, X)
+			// Vertical movespeed = inverse radius * distance from center
+			float moveSpeed_x = MIN(1.0f, 1/(float)v->radius);
+			float moveSpeed_y = (((float)v->y / (float)row) / 2) / (float)v->radius;
+			
 			/*
 			counter++;
+			mvwprintw(wnd, row - counter, 0
+				, "Move X: %f, Move Y: %f"
+				, moveSpeed_x, moveSpeed_y);
+			*/
+
+			v->vx += -1 * norm_signed_x * factor_x * moveSpeed_x;
+			v->vy += -1 * norm_signed_y * factor_y * moveSpeed_y;
+
+			v->x += v->vx;
+			v->y += v->vy;
+
+			if(v->x > col)
+				v->x = col;
+			else if(v->x < 0)
+				v->x = 0;
+			if(v->y > row)
+				v->y = row;
+			else if(v->y < 0)
+				v->y = 0;
+			/*
 			mvwprintw(wnd, row - counter, 0, "VX: %f, VY: %f, X: %d, Y: %d"
 					, v->vx, v->vy, v->x, v->y);
 			*/
@@ -168,7 +179,7 @@ int main() {
 	return 0;
 }
 
-struct metaball *new_metaball_mv(int y, int x, int radius, int isMoveable, float moveSpeed) {
+struct metaball *new_metaball(int y, int x, int radius) {
 	struct metaball *ball = malloc(sizeof(struct metaball));
 	ball->y = y;
 	ball->x = x;
@@ -177,13 +188,7 @@ struct metaball *new_metaball_mv(int y, int x, int radius, int isMoveable, float
 	ball->vx = 0.0f;
 	ball->vy = 0.0f;
 
-	ball->isMoveable = isMoveable;
-	ball->moveSpeed = moveSpeed;
-
 	return ball;
-}
-struct metaball *new_metaball(int y, int x, int radius) {
-	return new_metaball_mv(y, x, radius, 1, 1.0f);
 }
 
 void free_metaball(struct metaball *ball) {
