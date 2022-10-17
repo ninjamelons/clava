@@ -113,42 +113,39 @@ int main() {
 			}
 		}
 
-
 		// Move balls
 		// Random slow horizontal movement
 		// Bouyant from bottom to top, with pauses in between
 		for(int i = 0; i < size; i++) {
 			struct metaball *v = vec[i];
+			counter++;
 
-			// Normalize X,Y
-			float norm_x = (float)v->x / col;
-			float norm_y = (float)v->y / row;
-			// Between negative and positive value
-			float norm_signed_x = norm_x - 0.5f;
-			float norm_signed_y = norm_y * 3 - 1.5f;
+			// Normalize X,Y - X: [-0.8f,0.8f], Y: [-1.5f,1.5f]
+			float norm_signed_x = ((float)v->x / col) * 1.6f - 0.8f;
+			float norm_signed_y = ((float)v->y / row) * 3 - 1.5f;
 
 			// Seed rand and get random scaling factor for displacement
-			float factor_x = (float)rand() / RAND_MAX * 0.2;
+			float factor_x = (float)rand() / RAND_MAX;
 			float factor_y = (float)rand() / RAND_MAX;
 
 			// Horizontal movespeed = Min(inverse radius, X)
 			// Vertical movespeed = inverse radius * distance from center
-			float moveSpeed_x = MIN(1.0f, 1/(float)v->radius);
-			float moveSpeed_y = (((float)v->y / (float)row) / 2) / (float)v->radius;
-			
-			/*
-			counter++;
-			mvwprintw(wnd, row - counter, 0
-				, "Move X: %f, Move Y: %f"
-				, moveSpeed_x, moveSpeed_y);
-			*/
+			float distToCentre = ((float)row / 2.0f) - (float)v->y;
 
-			v->vx += -1 * norm_signed_x * factor_x * moveSpeed_x;
-			v->vy += -1 * norm_signed_y * factor_y * moveSpeed_y;
+			float moveSpeed_x = MIN(1.0f, 1/(float)v->radius);
+			float moveSpeed_y = -1 / (distToCentre * (float)v->radius);
+
+			v->vx += norm_signed_x * factor_x * moveSpeed_x;
+			v->vy += norm_signed_y * factor_y * moveSpeed_y;
+			
+			mvwprintw(wnd, row - counter, 0
+				, "dist: %f, rad: %d, moveX: %f, moveY: %f"
+				, distToCentre, v->radius, moveSpeed_x, moveSpeed_y);
 
 			v->x += v->vx;
 			v->y += v->vy;
 
+			// Bind min and max x/y values
 			if(v->x > col)
 				v->x = col;
 			else if(v->x < 0)
